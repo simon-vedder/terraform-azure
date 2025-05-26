@@ -1,94 +1,92 @@
-###
-# Environment
-###
-data "azurerm_subscription" "current" {
-}
+/*
+AUTHOR: Simon Vedder
+DATE: 26.05.2025
 
+SHORT DESCRIPTION: Deallocate Stopped VM - ActivityLog based after VM get shutdown
+Managed Identity is used for authentication.
 
-data "azurerm_managed_api" "arm_api" {
- name     = "arm"
- location = "germanywestcentral"
-}
-data "azurerm_managed_api" "azurevm_api" {
- name     = "azurevm"
- location = "germanywestcentral"
-}
-
-resource "azurerm_api_connection" "arm_connection" {
- name                = "arm"
- resource_group_name = local.rg_name
- managed_api_id      = data.azurerm_managed_api.arm_api.id
- display_name        = "Azure Resource Manager"
- parameter_values = {
-    "token:grantType" = "code" #maybe use managed identity
- }
- lifecycle {
-    ignore_changes = [parameter_values]
- }
-}
-
-resource "azurerm_api_connection" "azurevm_connection" {
- name                = "azurevm"
- resource_group_name = local.rg_name
- managed_api_id      = data.azurerm_managed_api.azurevm_api.id
- display_name        = "Azure VM"
- parameter_values = {
-    "token:grantType" = "code"
- }
- lifecycle {
-    ignore_changes = [parameter_values]
- }
-}
-
-
-
+Full terraform solution is currently not available so an ARM template is required.
+Conditions aren't possible.
+*/
 
 ###
 # Logic App
 ###
 
-#DeallocateStoppedVM - ActivityLog based after VM get shutdown
-resource "azurerm_logic_app_workflow" "deallocatestoppedvm" {
-    name                = "DeallocateStoppedVM-tf"
-    location            = local.rg_location
+#Basic logic app workflow
+resource "azurerm_logic_app_workflow" "this" {
+    name                = "DeallocateStoppedVM"
+    location            = data.azurerm_resource_group.this.location
     resource_group_name = local.rg_name
+    identity {
+      type = "SystemAssigned"
+    }
+    lifecycle {
+      #needed - otherwise every apply would overwrite the workflow. Full workflow solution with conditions in terraform not possible at the moment!
+      ignore_changes = all
+    }
 }
-resource "azurerm_resource_group_template_deployment" "deallocatestoppedvm-content" {
-    name                = "DeallocateStoppedVM-Content"
-    resource_group_name = local.rg_name
-    deployment_mode     = "Incremental"
-    template_content    = file("${path.module}/LogicApps/VirtualDesktopEnvironment_DeallocateStoppedVM.json")
-    parameters_content = jsonencode({
-      "workflows_DeallocateStoppedVM_name" = {value = "DeallocateStoppedVM"}
-      "connections_azurevm_externalid" = {value = azurerm_api_connection.azurevm_connection.id}
-      "subscription_id" = {value = data.azurerm_subscription.current.id}
-      "managed_api_id" = {value = data.azurerm_managed_api.azurevm_api.id}
-      "resourcegroup_name" = {value = local.rg_name}
-    })
-    depends_on = [
-      azurerm_logic_app_workflow.deallocatestoppedvm
-    ]
+#Http trigger - needed for callback url
+resource "azurerm_logic_app_trigger_http_request" "this" {
+  name = "When_a_HTTP_request_is_received"
+  logic_app_id = azurerm_logic_app_workflow.this.id
+  schema = <<SCHEMA
+  {
+  }
+  SCHEMA
+  lifecycle {
+    # needed - otherwise the schema in ARM would get overwritten. Can be also inserted here!
+    ignore_changes = [ schema ]
+  }
 }
 
-# Alert for DeallocateStoppedVM
-resource "azurerm_monitor_action_group" "deallocatevmaction" {
-  name                = "TriggerLogicAppViaHealthAlert-tf"
+resource "azurerm_resource_group_template_deployment" "logicapp-content" {
+    name                = "DeallocateStoppedVM-Content-${formatdate("YYYYMMDD-HHmmss", timestamp())}"
+    resource_group_name = local.rg_name
+    deployment_mode     = "Incremental"
+    template_content    = file("${path.module}/deallocate-stoppedvm.json")
+    parameters_content = jsonencode({
+      "workflow_name" = {value = azurerm_logic_app_workflow.this.name} #do not change
+      "connection_name" = {value = azapi_resource.msi-apiconnection.name} #api connection for managed identity
+    })
+    depends_on = [
+      azurerm_logic_app_workflow.this
+    ]
+    lifecycle {
+      #otherwise would deploy every time
+      ignore_changes = all
+    }
+}
+
+
+
+
+
+###
+# Trigger
+###
+
+# Action to run Logic App
+resource "azurerm_monitor_action_group" "this" {
+  name                = "TriggerLogicAppViaHealthAlert"
   resource_group_name = local.rg_name
   short_name          = "HealthAlert"
-  location = "westeurope"
+  location = "global"
 
   logic_app_receiver {
     name        = "TriggerLogicApp"
-    resource_id = azurerm_logic_app_workflow.deallocatestoppedvm.id 
-    callback_url = azurerm_logic_app_workflow.deallocatestoppedvm.access_endpoint
+    resource_id = azurerm_logic_app_workflow.this.id
+    callback_url = azurerm_logic_app_trigger_http_request.this.callback_url
     use_common_alert_schema = true
   }
   depends_on = [
-    azurerm_logic_app_workflow.deallocatestoppedvm
+    azurerm_logic_app_workflow.this
   ]
 }
-resource "azurerm_monitor_activity_log_alert" "deallocatevmalert" {
-  name                = "TriggerLogicAppViaHealthAlert-tf"
+
+# Alert Rule which get triggered by new activity log entries. see criteria
+resource "azurerm_monitor_activity_log_alert" "this" {
+  name                = "TriggerLogicAppViaHealthAlert"
   resource_group_name = local.rg_name
   scopes              = local.scope_id
 	location = "westeurope"
@@ -104,9 +102,9 @@ resource "azurerm_monitor_activity_log_alert" "deallocatevmalert" {
 
 
   action {
-    action_group_id = azurerm_monitor_action_group.deallocatevmaction.id
+    action_group_id = azurerm_monitor_action_group.this.id
   }
   depends_on = [
-    azurerm_monitor_action_group.deallocatevmaction
+    azurerm_monitor_action_group.this
   ]
 }

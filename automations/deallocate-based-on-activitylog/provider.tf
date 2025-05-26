@@ -4,9 +4,15 @@ terraform {
       source  = "hashicorp/azurerm"
       version = ">= 2.0"
     }
+    azapi = { #for api connection
+      source  = "azure/azapi"
+      version = ">=0.1.0"
+    }
   }
 }
 provider "azurerm" {
   features {}
   subscription_id   = local.subscription_id
+}
+provider "azapi" {
 }

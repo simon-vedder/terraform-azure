@@ -2,37 +2,25 @@
     "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
     "contentVersion": "1.0.0.0",
     "parameters": {
-        "workflows_DeallocateStoppedVM_name": {
+        "workflow_name": {
             "defaultValue": "DeallocateStoppedVM",
-            "type": "string"
-        },
-        "connections_azurevm_externalid": {
-            "defaultValue": "",
-            "type": "string"
-        },
-        "subscription_id": {
-            "defaultValue": "",
-            "type": "string"
-        },
-        "managed_api_id": {
-            "defaultValue": "",
-            "type": "string"
-        },
-        "resourcegroup_name": {
-            "defaultValue": "",
             "type": "string"
         },
         "resourcegroup_location": {
             "defaultValue": "westeurope",
             "type": "string"
-        } 
+        },
+        "connection_name": {
+            "defaultValue": "azurevm-arm",
+            "type": "string"
+        }
     },
     "variables": {},
     "resources": [
         {
             "type": "Microsoft.Logic/workflows",
             "apiVersion": "2017-07-01",
-            "name": "[parameters('workflows_DeallocateStoppedVM_name')]",
+            "name": "[parameters('workflow_name')]",
             "location": "[parameters('resourcegroup_location')]",
             "properties": {
                 "state": "Enabled",
@@ -154,7 +142,7 @@
                                             }
                                         },
                                         "method": "post",
-                                        "path": "/subscriptions/[parameters('subscription_id')]/resourcegroups/[parameters('resourcegroup_name')]/providers/Microsoft.Compute/virtualMachines/@{encodeURIComponent(variables('VMName'))}/deallocate",
+                                        "path": "/subscriptions/@{encodeURIComponent(variables('SubId'))}/resourcegroups/@{encodeURIComponent(variables('RGName'))}/providers/Microsoft.Compute/virtualMachines/@{encodeURIComponent(variables('VMName'))}/deallocate",
                                         "queries": {
                                             "api-version": "2019-12-01"
                                         }
@@ -162,7 +150,7 @@
                                 }
                             },
                             "runAfter": {
-                                "Initialize_variable_1": [
+                                "Variable: Subscription": [
                                     "Succeeded"
                                 ]
                             },
@@ -181,7 +169,7 @@
                             },
                             "type": "If"
                         },
-                        "Initialize_variable": {
+                        "Variable: VMName": {
                             "runAfter": {},
                             "type": "InitializeVariable",
                             "inputs": {
@@ -194,9 +182,9 @@
                                 ]
                             }
                         },
-                        "Initialize_variable_1": {
+                        "Variable: LogDetails": {
                             "runAfter": {
-                                "Initialize_variable": [
+                                "Variable: VMName": [
                                     "Succeeded"
                                 ]
                             },
@@ -210,17 +198,57 @@
                                     }
                                 ]
                             }
+                        },
+                        "Variable: Resourcegroup": {
+                            "runAfter": {
+                                "Variable: LogDetails": [
+                                    "Succeeded"
+                                ]
+                            },
+                            "type": "InitializeVariable",
+                            "inputs": {
+                                "variables": [
+                                    {
+                                        "name": "RGName",
+                                        "type": "string",
+                                        "value": "@{triggerBody()?['data']['essentials']['targetResourceGroup']}"
+                                    }
+                                ]
+                            }
+                        },
+                        "Variable: Subscription": {
+                            "runAfter": {
+                                "Variable: Resourcegroup": [
+                                    "Succeeded"
+                                ]
+                            },
+                            "type": "InitializeVariable",
+                            "inputs": {
+                                "variables": [
+                                    {
+                                        "name": "SubId",
+                                        "type": "string",
+                                        "value": "@{split(triggerBody()?['data']['essentials']['alertId'], '/')[2]}"
+                                    }
+                                ]
+                            }
                         }
                     },
                     "outputs": {}
                 },
                 "parameters": {
                     "$connections": {
+                        "type": "Object",
                         "value": {
                             "azurevm": {
-                                "connectionId": "[parameters('connections_azurevm_externalid')]",
-                                "connectionName": "azurevm",
-                                "id": "[parameters('managed_api_id')]"
+                                "connectionId": "[resourceId('Microsoft.Web/connections', parameters('connection_name'))]",
+                                "connectionName": "[parameters('connection_name')]",
+                                "connectionProperties": {
+                                    "authentication": {
+                                        "type": "ManagedServiceIdentity"
+                                    }
+                                },
+                                "id": "[subscriptionResourceId('Microsoft.Web/locations/managedApis', parameters('resourcegroup_location'), 'azurevm')]"
                             }
                         }
                     }
