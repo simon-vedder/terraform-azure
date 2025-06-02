@@ -34,6 +34,12 @@
 
 .NOTES
     - Full terraform solution is currently not possible because conditions in logic apps are not supported yet.
+
+.RUN
+  - Download and run "terraform apply -var sub_id=yourid -var rg_name=yourrgname"
+    - Required variables: rg_name, sub_id
+  - Use this tfs as your module source
+  - Resourcegroup has to exist in my solution but feel free to create it within your code
 */
 
 
