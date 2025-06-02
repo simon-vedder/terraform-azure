@@ -1,13 +1,50 @@
 /*
-AUTHOR: Simon Vedder
-DATE: 26.05.2025
+.TITLE
+    Deallocate VM based on ActivityLog
 
-SHORT DESCRIPTION: Deallocate Stopped VM - ActivityLog based after VM get shutdown
-Managed Identity is used for authentication.
+.SYNOPSIS
+    React to VMs which get shutdown by a user to deallocate the VM. 
 
-Full terraform solution is currently not available so an ARM template is required.
-Conditions aren't possible.
+.DESCRIPTION
+    This terraform template creates an environment in your defined resourcegroup and subscription. This environment creates a logic app, alert rule, action group, managed identity, role assignment and an api connection.
+    Each user initiated shutdown creates a new entry in the activity log of an Azure resource. 
+    This event will trigger an alert if the resource is an VM so the logic app will get triggered by an action group to deallocate the VM if the log details contain the correct information.
+
+
+.TAGS
+    LogicApp, Automation, AlertRule, ActionGroup
+
+.MINROLE
+    Contributor
+
+.PERMISSIONS
+    tbd
+
+.AUTHOR
+    Simon Vedder
+
+.VERSION
+    1.0
+
+.CHANGELOG
+    1.0 - Initial release
+
+.LASTUPDATE
+    2025-06-02
+
+.NOTES
+    - Full terraform solution is currently not possible because conditions in logic apps are not supported yet.
 */
+
+
+# Get subscription
+data "azurerm_subscription" "this" {
+}
+
+data "azurerm_resource_group" "this" {
+  name = var.rg_name
+}
+
 
 ###
 # Logic App
@@ -17,7 +54,7 @@ Conditions aren't possible.
 resource "azurerm_logic_app_workflow" "this" {
     name                = "DeallocateStoppedVM"
     location            = data.azurerm_resource_group.this.location
-    resource_group_name = local.rg_name
+    resource_group_name = data.azurerm_resource_group.this.name
     identity {
       type = "SystemAssigned"
     }
@@ -41,16 +78,17 @@ resource "azurerm_logic_app_trigger_http_request" "this" {
 }
 
 data "http" "remote_template" {
-  url = "https://raw.githubusercontent.com/simon-vedder/arm-templates/main/automations/deallocate-based-on-activitylog/deallocate-stoppedvm.json"
+  url = "https://raw.githubusercontent.com/simon-vedder/arm-templates/main/automations/deallocate-based-on-activitylog/logicapp-deallocate-stoppedvm.json"
 }
 
 resource "azurerm_resource_group_template_deployment" "logicapp-content" {
     name                = "DeallocateStoppedVM-Content-${formatdate("YYYYMMDD-HHmmss", timestamp())}"
-    resource_group_name = local.rg_name
+    resource_group_name = data.azurerm_resource_group.this.name
     deployment_mode     = "Incremental"
     template_content    = data.http.remote_template.response_body
     parameters_content = jsonencode({
       "workflow_name" = {value = azurerm_logic_app_workflow.this.name} #do not change
+      "resourcegroup_location" = {value = data.azurerm_resource_group.this.location}
       "connection_name" = {value = azapi_resource.msi-apiconnection.name} #api connection for managed identity
     })
     depends_on = [
@@ -73,7 +111,7 @@ resource "azurerm_resource_group_template_deployment" "logicapp-content" {
 # Action to run Logic App
 resource "azurerm_monitor_action_group" "this" {
   name                = "TriggerLogicAppViaHealthAlert"
-  resource_group_name = local.rg_name
+  resource_group_name = data.azurerm_resource_group.this.name
   short_name          = "HealthAlert"
   location = "global"
 
@@ -91,9 +129,9 @@ resource "azurerm_monitor_action_group" "this" {
 # Alert Rule which get triggered by new activity log entries. see criteria
 resource "azurerm_monitor_activity_log_alert" "this" {
   name                = "TriggerLogicAppViaHealthAlert"
-  resource_group_name = local.rg_name
-  scopes              = local.scope_id
-	location = "westeurope"
+  resource_group_name = data.azurerm_resource_group.this.name
+  scopes              = [data.azurerm_subscription.this.id]
+	location = data.azurerm_resource_group.this.location
 
   criteria {
     category = "ResourceHealth"

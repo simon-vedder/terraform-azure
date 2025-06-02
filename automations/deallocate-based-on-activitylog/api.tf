@@ -1,8 +1,3 @@
-# required for api connection parent id
-data "azurerm_resource_group" "this"{
-  name = local.rg_name
-}
-
 # azure vm managed api
 data "azurerm_managed_api" "azurevm_api" {
  name     = "azurevm"
@@ -21,7 +16,7 @@ resource "azapi_resource" "msi-apiconnection" {
         parameterValueType = "Alternative"
         displayName = "azurerm_connection"
         api = {
-        id          = "${local.scope_id[0]}/providers/Microsoft.Web/locations/${data.azurerm_resource_group.this.location}/managedApis/azurevm"
+        id          = "${data.azurerm_subscription.this.id}/providers/Microsoft.Web/locations/${data.azurerm_resource_group.this.location}/managedApis/azurevm"
         }
      }
   }
