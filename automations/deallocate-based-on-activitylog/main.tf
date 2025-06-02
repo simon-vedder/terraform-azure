@@ -40,11 +40,15 @@ resource "azurerm_logic_app_trigger_http_request" "this" {
   }
 }
 
+data "http" "remote_template" {
+  url = "https://raw.githubusercontent.com/simon-vedder/arm-templates/main/automations/deallocate-based-on-activitylog/deallocate-stoppedvm.json"
+}
+
 resource "azurerm_resource_group_template_deployment" "logicapp-content" {
     name                = "DeallocateStoppedVM-Content-${formatdate("YYYYMMDD-HHmmss", timestamp())}"
     resource_group_name = local.rg_name
     deployment_mode     = "Incremental"
-    template_content    = file("${path.module}/deallocate-stoppedvm.json")
+    template_content    = data.http.remote_template.response_body
     parameters_content = jsonencode({
       "workflow_name" = {value = azurerm_logic_app_workflow.this.name} #do not change
       "connection_name" = {value = azapi_resource.msi-apiconnection.name} #api connection for managed identity
