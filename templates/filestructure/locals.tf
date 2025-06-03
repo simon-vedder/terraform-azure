@@ -3,5 +3,5 @@
 
 locals {
   local_location = "westus"
-  vnet_name = "default"
+  vnet_name      = "default"
 }

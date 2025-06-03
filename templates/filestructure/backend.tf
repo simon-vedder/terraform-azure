@@ -4,11 +4,11 @@
 
 terraform {
   backend "azurerm" {
-    subscription_id = "subscriptionid"
-    resource_group_name = "tfstate_rg"
+    subscription_id      = "subscriptionid"
+    resource_group_name  = "tfstate_rg"
     storage_account_name = "tfstatestorageaccount001"
-    container_name = "tfstatefilesblob"
-    key = "projectname.tfstate"
-    use_azuread_auth = true
+    container_name       = "tfstatefilesblob"
+    key                  = "projectname.tfstate"
+    use_azuread_auth     = true
   }
 }

@@ -1,5 +1,5 @@
 variable "rg_name" {
-  type = string
+  type    = string
   default = "automations"
 }
 
