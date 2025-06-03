@@ -35,13 +35,22 @@
 .NOTES
     - Full terraform solution is currently not possible because conditions in logic apps are not supported yet.
 
-.RUN
+.USAGE
   - Download and run "terraform apply -var sub_id=yourid -var rg_name=yourrgname"
     - Required variables: rg_name, sub_id
   - Use this tfs as your module source
   - Resourcegroup has to exist in my solution but feel free to create it within your code
 */
 
+
+locals {
+  default_tags = {
+    Author      = "Simon Vedder"
+    Contact     = "info@simonvedder.com"
+    Project     = "DeallocateStoppedVM"
+    ManagedBy   = "Terraform"
+  }
+}
 
 # Get subscription
 data "azurerm_subscription" "this" {
@@ -68,6 +77,7 @@ resource "azurerm_logic_app_workflow" "this" {
       #needed - otherwise every apply would overwrite the workflow. Full workflow solution with conditions in terraform not possible at the moment!
       ignore_changes = all
     }
+    tags = local.default_tags
 }
 #Http trigger - needed for callback url
 resource "azurerm_logic_app_trigger_http_request" "this" {
@@ -130,6 +140,7 @@ resource "azurerm_monitor_action_group" "this" {
   depends_on = [
     azurerm_logic_app_workflow.this
   ]
+  tags = local.default_tags
 }
 
 # Alert Rule which get triggered by new activity log entries. see criteria
@@ -155,4 +166,6 @@ resource "azurerm_monitor_activity_log_alert" "this" {
   depends_on = [
     azurerm_monitor_action_group.this
   ]
+
+  tags = local.default_tags
 }

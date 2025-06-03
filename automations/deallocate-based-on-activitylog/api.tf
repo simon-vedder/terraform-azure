@@ -20,4 +20,6 @@ resource "azapi_resource" "msi-apiconnection" {
         }
      }
   }
+
+  tags = local.default_tags
 }
