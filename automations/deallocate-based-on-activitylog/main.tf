@@ -94,7 +94,7 @@ resource "azurerm_logic_app_trigger_http_request" "this" {
 }
 
 data "http" "remote_template" {
-  url = "https://raw.githubusercontent.com/simon-vedder/arm-templates/main/automations/deallocate-based-on-activitylog/logicapp-deallocate-stoppedvm.json"
+  url = "https://raw.githubusercontent.com/simon-vedder/arm/main/automations/deallocate-based-on-activitylog/logicapp-deallocate-stoppedvm.json"
 }
 
 resource "azurerm_resource_group_template_deployment" "logicapp-content" {
