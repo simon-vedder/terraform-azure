@@ -39,3 +39,5 @@ terraform.rc
 
 #exectpion for filestructure tfvars
 !templates/filestructure/terraform.tfvars
+
+.DS_Store
