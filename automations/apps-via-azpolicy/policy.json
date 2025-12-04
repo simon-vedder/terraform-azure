@@ -1,0 +1,150 @@
+{
+  "mode": "Indexed",
+  "policyRule": {
+
+    "if": {
+    "allOf": [
+        {
+        "field": "type",
+        "equals": "Microsoft.Compute/virtualMachines"
+        },
+        {
+        "field": "Microsoft.Compute/virtualMachines/storageProfile.osDisk.osType",
+        "equals": "Windows"
+        }
+    ]
+    },
+    "then": {
+    "effect": "deployIfNotExists",
+    "details": {
+        "type": "Microsoft.Compute/virtualMachines",
+        "name": "[field('name')]",
+        "roleDefinitionIds": [
+        "/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c"
+        ],
+        "existenceCondition": {
+        "allOf": [
+            {
+            "count": {
+                "field": "Microsoft.Compute/virtualMachines/applicationProfile.galleryApplications[*]",
+                "where": {
+                "field": "Microsoft.Compute/virtualMachines/applicationProfile.galleryApplications[*].packageReferenceId",
+                "equals": "[parameters('applicationVersion')]"
+                }
+            },
+            "greater": 0
+            }
+        ]
+        },
+        "deployment": {
+        "properties": {
+            "mode": "incremental",
+            "parameters": {
+            "vmName": {
+                "value": "[field('name')]"
+            },
+            "location": {
+                "value": "[field('location')]"
+            },
+            "subscriptionId": {
+                "value": "[parameters('subscriptionId')]"
+            },
+            "resourceGroupName": {
+                "value": "[parameters('resourceGroupName')]"
+            },
+            "galleryName": {
+                "value": "[parameters('galleryName')]"
+            },
+            "applicationName": {
+                "value": "[parameters('applicationName')]"
+            },
+            "applicationVersion": {
+                "value": "[parameters('applicationVersion')]"
+            }
+            },
+            "template": {
+            "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+            "contentVersion": "1.0.0.0",
+            "parameters": {
+                "vmName": {
+                "type": "string"
+                },
+                "location": {
+                "type": "string"
+                },
+                "subscriptionId": {
+                "type": "string"
+                },
+                "resourceGroupName": {
+                "type": "string"
+                },
+                "galleryName": {
+                "type": "string"
+                },
+                "applicationName": {
+                "type": "string"
+                },
+                "applicationVersion": {
+                "type": "string"
+                }
+            },
+            "variables": {
+                "packageReferenceId": "[format('/subscriptions/{0}/resourceGroups/{1}/providers/Microsoft.Compute/galleries/{2}/applications/{3}/versions/{4}', parameters('subscriptionId'), parameters('resourceGroupName'), parameters('galleryName'), parameters('applicationName'), parameters('applicationVersion'))]"
+            },
+            "resources": [
+                {
+                "type": "Microsoft.Compute/virtualMachines/VMapplications",
+                "apiVersion": "2021-07-01",
+                "name": "[concat(parameters('vmName'), '/', parameters('applicationName'))]",
+                "location": "[parameters('location')]",
+                "properties": {
+                    "packageReferenceId": "[variables('packageReferenceId')]"
+                }
+                }
+            ]
+            }
+        }
+        }
+    }
+    }
+  },
+  "parameters": {
+    "subscriptionId": {
+    "type": "String",
+    "metadata": {
+        "displayName": "Subscription ID",
+        "description": "The subscription ID where the gallery is located"
+    }
+    },
+    "resourceGroupName": {
+    "type": "String",
+    "metadata": {
+        "displayName": "Gallery Resource Group Name",
+        "description": "The resource group name where the gallery is located"
+    }
+    },
+    "galleryName": {
+    "type": "String",
+    "metadata": {
+        "displayName": "Gallery Name",
+        "description": "The name of the Compute Gallery"
+    }
+    },
+    "applicationName": {
+    "type": "String",
+    "metadata": {
+        "displayName": "Application Name",
+        "description": "The name of the VM Application"
+    }
+    },
+    "applicationVersion": {
+    "type": "String",
+    "defaultValue": "1.0.0",
+    "metadata": {
+        "displayName": "Application Version",
+        "description": "The version of the VM Application to deploy"
+    }
+    }
+
+  }
+}
