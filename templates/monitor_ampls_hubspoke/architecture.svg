@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 500" font-family="Segoe UI, Arial, sans-serif">
+
+  <rect width="700" height="500" fill="#f4f6f9"/>
+  <text x="350" y="32" text-anchor="middle" font-size="16" font-weight="bold" fill="#1a1a2e">Hub-Spoke Azure Monitor Architecture</text>
+
+  <!-- HUB -->
+  <rect x="40" y="55" width="620" height="170" rx="10" fill="#dce8f7" stroke="#2563eb" stroke-width="2"/>
+  <text x="60" y="78" font-size="12" font-weight="bold" fill="#2563eb">HUB  (Platform Team)</text>
+
+  <rect x="60" y="88" width="120" height="50" rx="6" fill="white" stroke="#2563eb" stroke-width="1.5"/>
+  <text x="120" y="110" text-anchor="middle" font-size="10" font-weight="bold" fill="#1e3a8a">Private Endpoint</text>
+  <text x="120" y="126" text-anchor="middle" font-size="9" fill="#6b7280">AMPLS</text>
+
+  <rect x="205" y="88" width="120" height="50" rx="6" fill="white" stroke="#7c3aed" stroke-width="1.5"/>
+  <text x="265" y="110" text-anchor="middle" font-size="10" font-weight="bold" fill="#4c1d95">AMPLS</text>
+  <text x="265" y="126" text-anchor="middle" font-size="9" fill="#6b7280">PrivateOnly</text>
+
+  <rect x="350" y="88" width="120" height="50" rx="6" fill="white" stroke="#059669" stroke-width="1.5"/>
+  <text x="410" y="110" text-anchor="middle" font-size="10" font-weight="bold" fill="#064e3b">DCE</text>
+  <text x="410" y="126" text-anchor="middle" font-size="9" fill="#6b7280">Data Collection Endpoint</text>
+
+  <rect x="495" y="88" width="140" height="50" rx="6" fill="#f0fdf4" stroke="#4ade80" stroke-width="1.5"/>
+  <text x="565" y="107" text-anchor="middle" font-size="10" font-weight="bold" fill="#14532d">Private DNS Zones</text>
+  <text x="565" y="120" text-anchor="middle" font-size="8" fill="#166534">monitor / oms / ods</text>
+  <text x="565" y="132" text-anchor="middle" font-size="8" fill="#166534">agentsvc / blob</text>
+
+  <rect x="60" y="152" width="555" height="60" rx="6" fill="#eff6ff" stroke="#93c5fd" stroke-width="1" stroke-dasharray="5,3"/>
+  <text x="337" y="172" text-anchor="middle" font-size="10" fill="#1d4ed8" font-weight="bold">vnet-hub</text>
+  <text x="337" y="188" text-anchor="middle" font-size="9" fill="#6b7280">snet-private-endpoints  ·  DNS Zone VNet Links (hub + alle Spokes)</text>
+
+  <!-- Peering -->
+  <line x1="350" y1="225" x2="350" y2="275" stroke="#f59e0b" stroke-width="2.5" marker-end="url(#arr-o)" marker-start="url(#arr-o2)"/>
+  <rect x="240" y="238" width="220" height="20" rx="4" fill="#fef3c7" stroke="#f59e0b" stroke-width="1"/>
+  <text x="350" y="252" text-anchor="middle" font-size="9" fill="#92400e" font-weight="bold">VNet Peering (bidirectional)</text>
+
+  <!-- SPOKE -->
+  <rect x="40" y="280" width="620" height="195" rx="10" fill="#fdf2f8" stroke="#a855f7" stroke-width="2"/>
+  <text x="60" y="302" font-size="12" font-weight="bold" fill="#a855f7">SPOKE  (Workload Team)</text>
+
+  <rect x="60" y="310" width="595" height="150" rx="6" fill="#fdf4ff" stroke="#d8b4fe" stroke-width="1" stroke-dasharray="5,3"/>
+  <text x="357" y="328" text-anchor="middle" font-size="10" fill="#7e22ce" font-weight="bold">vnet-spoke  ·  snet-workloads</text>
+
+  <rect x="80" y="336" width="130" height="110" rx="6" fill="white" stroke="#7c3aed" stroke-width="1.5"/>
+  <text x="145" y="356" text-anchor="middle" font-size="10" font-weight="bold" fill="#4c1d95">VM</text>
+  <text x="145" y="372" text-anchor="middle" font-size="9" fill="#374151">AMA Agent</text>
+  <text x="145" y="386" text-anchor="middle" font-size="9" fill="#374151">Managed Identity</text>
+  <line x1="80" y1="395" x2="210" y2="395" stroke="#e5e7eb" stroke-width="1"/>
+  <text x="145" y="409" text-anchor="middle" font-size="8.5" fill="#6b7280">DCR Association</text>
+  <text x="145" y="422" text-anchor="middle" font-size="8.5" fill="#6b7280">DCE Association</text>
+
+  <rect x="235" y="336" width="130" height="110" rx="6" fill="white" stroke="#0891b2" stroke-width="1.5"/>
+  <text x="300" y="356" text-anchor="middle" font-size="10" font-weight="bold" fill="#0c4a6e">DCR</text>
+  <text x="300" y="372" text-anchor="middle" font-size="9" fill="#374151">Syslog</text>
+  <text x="300" y="386" text-anchor="middle" font-size="9" fill="#374151">Performance Counters</text>
+  <line x1="235" y1="395" x2="365" y2="395" stroke="#e5e7eb" stroke-width="1"/>
+  <text x="300" y="410" text-anchor="middle" font-size="8.5" fill="#6b7280">via DCE (hub)</text>
+  <text x="300" y="423" text-anchor="middle" font-size="8.5" fill="#6b7280">dest: LAW (spoke)</text>
+
+  <rect x="390" y="336" width="130" height="110" rx="6" fill="white" stroke="#dc2626" stroke-width="1.5"/>
+  <text x="455" y="356" text-anchor="middle" font-size="10" font-weight="bold" fill="#7f1d1d">LAW</text>
+  <text x="455" y="372" text-anchor="middle" font-size="9" fill="#374151">Log Analytics</text>
+  <text x="455" y="386" text-anchor="middle" font-size="9" fill="#374151">Workspace</text>
+  <line x1="390" y1="395" x2="520" y2="395" stroke="#e5e7eb" stroke-width="1"/>
+  <text x="455" y="410" text-anchor="middle" font-size="8.5" fill="#6b7280">internet ingestion: off</text>
+  <text x="455" y="423" text-anchor="middle" font-size="8.5" fill="#6b7280">registered in AMPLS</text>
+
+  <rect x="545" y="336" width="95" height="110" rx="6" fill="#fff7ed" stroke="#fb923c" stroke-width="1.5"/>
+  <text x="592" y="356" text-anchor="middle" font-size="10" font-weight="bold" fill="#7c2d12">NSG</text>
+  <text x="592" y="374" text-anchor="middle" font-size="8" fill="#374151">443 → AMPLS</text>
+  <text x="592" y="387" text-anchor="middle" font-size="8" fill="#374151">443 → EntraID</text>
+  <text x="592" y="400" text-anchor="middle" font-size="8" fill="#374151">80  → IMDS</text>
+  <text x="592" y="413" text-anchor="middle" font-size="8" fill="#374151">53  → DNS</text>
+  <text x="592" y="430" text-anchor="middle" font-size="8" fill="#991b1b" font-weight="bold">Deny All</text>
+
+  <!-- Flow arrows -->
+  <line x1="210" y1="385" x2="235" y2="385" stroke="#0891b2" stroke-width="1.5" marker-end="url(#arr-c)"/>
+  <line x1="365" y1="385" x2="390" y2="385" stroke="#dc2626" stroke-width="1.5" marker-end="url(#arr-r)"/>
+  <path d="M145 336 L145 295 L120 295 L120 138" fill="none" stroke="#f59e0b" stroke-width="2" stroke-dasharray="5,3" marker-end="url(#arr-o)"/>
+  <text x="55" y="270" font-size="8" fill="#92400e">HTTPS 443</text>
+  <text x="55" y="282" font-size="8" fill="#92400e">private only</text>
+
+  <defs>
+    <marker id="arr-o" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#f59e0b"/>
+    </marker>
+    <marker id="arr-o2" markerWidth="8" markerHeight="8" refX="2" refY="3" orient="auto">
+      <path d="M8,0 L8,6 L0,3 z" fill="#f59e0b"/>
+    </marker>
+    <marker id="arr-c" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#0891b2"/>
+    </marker>
+    <marker id="arr-r" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#dc2626"/>
+    </marker>
+  </defs>
+
+</svg>
