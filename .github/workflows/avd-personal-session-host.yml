@@ -1,0 +1,149 @@
+name: AVD - Personal Session Host
+
+on:
+  workflow_dispatch:
+    inputs:
+      vm_name:
+        description: "VM name (max 15 chars, e.g. vm-avd-042)"
+        required: true
+        type: string
+      user_upn:
+        description: "User UPN (e.g. max.muster@contoso.com)"
+        required: true
+        type: string
+      vm_size:
+        description: "VM size"
+        required: true
+        default: "Standard_D4s_v6"
+        type: choice
+        options:
+          - Standard_D2s_v5
+          - Standard_D4s_v5
+          - Standard_D4s_v6
+          - Standard_D8s_v5
+      action:
+        description: "Action to perform"
+        required: true
+        default: "apply"
+        type: choice
+        options:
+          - plan
+          - apply
+          - destroy
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  WORKING_DIR: templates/azure_virtual_desktop/personal/session-host
+
+  # --- Terraform State Backend (not sensitive – adjust to your environment) ---
+  TF_STATE_RESOURCE_GROUP:  "management"
+  TF_STATE_STORAGE_ACCOUNT: "svtfstatefiles"
+  TF_STATE_CONTAINER:       "tfstatefilesblob"
+
+  # --- AVD Infrastructure (not sensitive – adjust to your environment) ---
+  AVD_RESOURCE_GROUP:         "rg-avd-prod"
+  AVD_HOST_POOL_NAME:         "hp-avd-personal"
+  AVD_SUBNET_NAME:            "snet-avd"
+  AVD_VNET_NAME:              "vnet-avd"
+  AVD_NETWORK_RESOURCE_GROUP: "rg-avd-prod"
+  AVD_APPLICATION_GROUP_NAME: "dag-avd-personal"
+
+jobs:
+  terraform:
+    name: "${{ inputs.action }} – ${{ inputs.vm_name }} (${{ inputs.user_upn }})"
+    runs-on: ubuntu-latest
+    environment: avd-production
+
+    env:
+      # Terraform Azure Provider – OIDC auth (secrets only)
+      ARM_CLIENT_ID:       ${{ secrets.ARM_CLIENT_ID }}
+      ARM_TENANT_ID:       ${{ secrets.ARM_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+      ARM_USE_OIDC:        "true"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id:       ${{ secrets.ARM_CLIENT_ID }}
+          tenant-id:       ${{ secrets.ARM_TENANT_ID }}
+          subscription-id: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~> 1.9"
+
+      - name: Terraform Init
+        working-directory: ${{ env.WORKING_DIR }}
+        run: |
+          terraform init \
+            -backend-config="resource_group_name=${{ env.TF_STATE_RESOURCE_GROUP }}" \
+            -backend-config="storage_account_name=${{ env.TF_STATE_STORAGE_ACCOUNT }}" \
+            -backend-config="container_name=${{ env.TF_STATE_CONTAINER }}" \
+            -backend-config="use_azuread_auth=true" \
+            -backend-config="key=avd/vms/${{ inputs.vm_name }}.tfstate"
+
+      - name: Terraform Plan
+        if: inputs.action != 'destroy'
+        working-directory: ${{ env.WORKING_DIR }}
+        run: |
+          terraform plan \
+            -var="subscription_id=${{ secrets.ARM_SUBSCRIPTION_ID }}" \
+            -var="tenant_id=${{ secrets.ARM_TENANT_ID }}" \
+            -var="vm_name=${{ inputs.vm_name }}" \
+            -var="user_upn=${{ inputs.user_upn }}" \
+            -var="vm_size=${{ inputs.vm_size }}" \
+            -var="admin_password=${{ secrets.AVD_VM_ADMIN_PASSWORD }}" \
+            -var="resource_group_name=${{ env.AVD_RESOURCE_GROUP }}" \
+            -var="host_pool_name=${{ env.AVD_HOST_POOL_NAME }}" \
+            -var="host_pool_resource_group=${{ env.AVD_RESOURCE_GROUP }}" \
+            -var="subnet_name=${{ env.AVD_SUBNET_NAME }}" \
+            -var="vnet_name=${{ env.AVD_VNET_NAME }}" \
+            -var="network_resource_group=${{ env.AVD_NETWORK_RESOURCE_GROUP }}" \
+            -var="application_group_name=${{ env.AVD_APPLICATION_GROUP_NAME }}" \
+            -out=tfplan
+
+      - name: Terraform Apply
+        if: inputs.action == 'apply'
+        working-directory: ${{ env.WORKING_DIR }}
+        run: terraform apply -auto-approve tfplan
+
+      - name: Terraform Destroy
+        if: inputs.action == 'destroy'
+        working-directory: ${{ env.WORKING_DIR }}
+        run: |
+          terraform destroy -auto-approve \
+            -var="subscription_id=${{ secrets.ARM_SUBSCRIPTION_ID }}" \
+            -var="tenant_id=${{ secrets.ARM_TENANT_ID }}" \
+            -var="vm_name=${{ inputs.vm_name }}" \
+            -var="user_upn=${{ inputs.user_upn }}" \
+            -var="vm_size=${{ inputs.vm_size }}" \
+            -var="admin_password=${{ secrets.AVD_VM_ADMIN_PASSWORD }}" \
+            -var="resource_group_name=${{ env.AVD_RESOURCE_GROUP }}" \
+            -var="host_pool_name=${{ env.AVD_HOST_POOL_NAME }}" \
+            -var="host_pool_resource_group=${{ env.AVD_RESOURCE_GROUP }}" \
+            -var="subnet_name=${{ env.AVD_SUBNET_NAME }}" \
+            -var="vnet_name=${{ env.AVD_VNET_NAME }}" \
+            -var="network_resource_group=${{ env.AVD_NETWORK_RESOURCE_GROUP }}" \
+            -var="application_group_name=${{ env.AVD_APPLICATION_GROUP_NAME }}"
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## AVD Session Host – ${{ inputs.action }}" >> $GITHUB_STEP_SUMMARY
+          echo "| Parameter | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| VM Name | \`${{ inputs.vm_name }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| User | \`${{ inputs.user_upn }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| VM Size | \`${{ inputs.vm_size }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Action | \`${{ inputs.action }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| State Key | \`avd/vms/${{ inputs.vm_name }}.tfstate\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Host Pool | \`${{ env.AVD_HOST_POOL_NAME }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Resource Group | \`${{ env.AVD_RESOURCE_GROUP }}\` |" >> $GITHUB_STEP_SUMMARY
