@@ -15,22 +15,24 @@
     LogicApp, Automation, AlertRule, ActionGroup
 
 .MINROLE
-    Contributor
+    Contributor on the resource group, User Access Administrator or Owner on the subscription (one role assignment lands there)
 
 .PERMISSIONS
-    tbd
+    The Logic App's identity gets Desktop Virtualization Power On Off Contributor at the subscription:
+    read, start, power off and deallocate virtual machines, nothing else.
 
 .AUTHOR
     Simon Vedder
 
 .VERSION
-    1.0
+    1.1
 
 .CHANGELOG
+    1.1 - Identity narrowed to the power-on/off role. Verified end to end with azurerm 5.5 and azapi 2.12.
     1.0 - Initial release
 
 .LASTUPDATE
-    2025-06-02
+    2026-09-12
 
 .NOTES
     - Full terraform solution is currently not possible because conditions in logic apps are not supported yet.
